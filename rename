@@ -1,0 +1,91 @@
+#!/bin/sh
+# Rewrite of Larry Wall and Robin Barker's perl rename script
+# By V
+# On September 4th, 2011
+
+usage()
+{
+cat << EOF
+Usage: $0 [-v] [-n] [-f] expr [filenames]
+EOF
+}
+
+EXPRESSION=
+NOACT=false
+VERBOSE=false
+FORCE=false
+
+for arg in "$@"
+do
+    case "$arg" in
+    -v | --verbose)     VERBOSE=true
+#                        echo \$VERBOSE = $VERBOSE
+                        ;;
+    -n | --no-act)      NOACT=true
+#                        echo \$NOACT = $NOACT
+                        ;;
+    -f | --force)       FORCE=true
+#                        echo \$FORCE = $FORCE
+                        ;;
+    *)      if [[ -z $EXPRESSION ]]
+            then
+                EXPRESSION=$arg
+#                echo \$EXPRESSION = $EXPRESSION
+            else
+#                echo \$arg = $arg
+                newname=$(echo "$arg" | sed "$EXPRESSION" )
+#                echo \$newname = $newname                
+                if [[ -z $newname ]] && ( $VERBOSE || $NOACT )
+                then
+                        echo $arg not renamed: new name is empty
+                else
+                        if [ "$arg" != "$newname" ]
+                        then
+                                if $FORCE
+                                then
+                                        if $NOACT
+                                        then
+                                                echo $arg renamed as $newname
+                                        else
+                                                echo y | mv -i "$arg" "$newname" 2> /dev/null
+                                        fi
+                                else
+                                        if [[ -e $newname ]]
+                                        then
+                                                if  $VERBOSE || $NOACT
+                                                then
+                                                        echo $arg not renamed: $newname already exists
+                                                fi
+                                        else
+                                                if $NOACT
+                                                then
+                                                        echo $arg renamed as $newname
+                                                else
+                                                        echo n | mv -i "$arg" "$newname" 2> /dev/null
+                                                fi
+                                        fi
+                                fi
+                                exitcode=$?
+#                                        echo exitcode of the rename operation $exitcode
+                                if $VERBOSE
+                                then
+                                        if [ $exitcode = 0 ]
+                                        then
+                                                echo $arg renamed as $newname
+                                        else
+                                                echo $arg not renamed: an error occured. Check if medium is writeable
+                                        fi
+                                fi
+                        fi
+                fi
+            fi
+            ;;
+    esac
+done
+
+if [[ -z $EXPRESSION ]]
+then
+     usage
+     exit 1
+fi
+
